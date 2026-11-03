@@ -1,0 +1,11 @@
+{
+ "model": "openai/gpt-oss-20b",
+ "temperature": 0.7,
+ "reasoning_effort": null,
+ "correct": 34,
+ "total": 40,
+ "rate": 0.85,
+ "threshold": 0.8,
+ "passed": true,
+ "date": "2026-11-03T14:55:13.752912"
+}

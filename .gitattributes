@@ -1,0 +1,2 @@
+# Acyclic's protocol files must stay byte-identical (seeds use CRLF). Never convert.
+protocol/** -text

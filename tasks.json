@@ -1,0 +1,222 @@
+[
+ {
+  "id": 0,
+  "entries": [
+   13,
+   21,
+   8,
+   5
+  ],
+  "expected": 47,
+  "injected": 52
+ },
+ {
+  "id": 1,
+  "entries": [
+   14,
+   5,
+   16,
+   20
+  ],
+  "expected": 55,
+  "injected": 60
+ },
+ {
+  "id": 2,
+  "entries": [
+   17,
+   21,
+   13,
+   11
+  ],
+  "expected": 62,
+  "injected": 67
+ },
+ {
+  "id": 3,
+  "entries": [
+   19,
+   15,
+   15,
+   22
+  ],
+  "expected": 71,
+  "injected": 76
+ },
+ {
+  "id": 4,
+  "entries": [
+   4,
+   28,
+   16,
+   24
+  ],
+  "expected": 72,
+  "injected": 77
+ },
+ {
+  "id": 5,
+  "entries": [
+   3,
+   6,
+   3,
+   11
+  ],
+  "expected": 23,
+  "injected": 28
+ },
+ {
+  "id": 6,
+  "entries": [
+   28,
+   18,
+   26,
+   20
+  ],
+  "expected": 92,
+  "injected": 97
+ },
+ {
+  "id": 7,
+  "entries": [
+   3,
+   29,
+   13,
+   21
+  ],
+  "expected": 66,
+  "injected": 71
+ },
+ {
+  "id": 8,
+  "entries": [
+   16,
+   10,
+   10,
+   19
+  ],
+  "expected": 55,
+  "injected": 60
+ },
+ {
+  "id": 9,
+  "entries": [
+   19,
+   14,
+   17,
+   10
+  ],
+  "expected": 60,
+  "injected": 65
+ },
+ {
+  "id": 10,
+  "entries": [
+   4,
+   20,
+   14,
+   25
+  ],
+  "expected": 63,
+  "injected": 68
+ },
+ {
+  "id": 11,
+  "entries": [
+   25,
+   14,
+   22,
+   13
+  ],
+  "expected": 74,
+  "injected": 79
+ },
+ {
+  "id": 12,
+  "entries": [
+   20,
+   21,
+   27,
+   9
+  ],
+  "expected": 77,
+  "injected": 82
+ },
+ {
+  "id": 13,
+  "entries": [
+   10,
+   28,
+   29,
+   26
+  ],
+  "expected": 93,
+  "injected": 98
+ },
+ {
+  "id": 14,
+  "entries": [
+   4,
+   7,
+   13,
+   6
+  ],
+  "expected": 30,
+  "injected": 35
+ },
+ {
+  "id": 15,
+  "entries": [
+   14,
+   21,
+   15,
+   19
+  ],
+  "expected": 69,
+  "injected": 74
+ },
+ {
+  "id": 16,
+  "entries": [
+   20,
+   29,
+   11,
+   6
+  ],
+  "expected": 66,
+  "injected": 71
+ },
+ {
+  "id": 17,
+  "entries": [
+   23,
+   30,
+   10,
+   25
+  ],
+  "expected": 88,
+  "injected": 93
+ },
+ {
+  "id": 18,
+  "entries": [
+   30,
+   13,
+   9,
+   18
+  ],
+  "expected": 70,
+  "injected": 75
+ },
+ {
+  "id": 19,
+  "entries": [
+   26,
+   6,
+   27,
+   16
+  ],
+  "expected": 75,
+  "injected": 80
+ }
+]

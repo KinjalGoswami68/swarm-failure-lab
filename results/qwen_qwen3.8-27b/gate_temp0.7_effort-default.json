@@ -1,0 +1,11 @@
+{
+ "model": "qwen/qwen3.8-27b",
+ "temperature": 0.7,
+ "reasoning_effort": null,
+ "correct": 38,
+ "total": 40,
+ "rate": 0.95,
+ "threshold": 0.8,
+ "passed": true,
+ "date": "2026-11-03T15:26:41.876560"
+}
