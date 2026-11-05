@@ -6,7 +6,7 @@ Usage:
   python run.py --tasks 2 --replicates 1        main arms; refuses without a passed gate (or --force)
   python run.py --controls                      main arms + negative-control chains (full design)
   python run.py --arms none --controls          negative-control chains only
-Common flags: --model, --temperature (default 0.7, D14), --reasoning-effort
+Common flags: --model, --temperature (default 0.7, D14), --reasoning-effort, --endpoint
 Output: results/<model>/<timestamp>[_gate].jsonl
 If rate limits outlast the backoff, the run stops with exit code 2 (D17). Re-run the same
 command later: finished calls come back from the cache at no cost.
@@ -17,7 +17,9 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
+import agent
 import verify_protocol
 from agent import RateLimitStop, call_agent
 from chain import run_chain, score
@@ -32,7 +34,11 @@ RESULTS = Path(__file__).parent / "results"
 
 
 def model_dir(model):
-    return RESULTS / model.replace("/", "_")
+    """results/<model>/. A non-default endpoint gets results/<host>__<model>/ so results never mix (D22)."""
+    name = model.replace("/", "_")
+    if agent.ENDPOINT != agent.DEFAULT_ENDPOINT:
+        name = urlparse(agent.ENDPOINT).netloc.replace(":", "_") + "__" + name
+    return RESULTS / name
 
 
 def gate_path(model, temperature, reasoning_effort):
@@ -143,7 +149,10 @@ def main():
     parser.add_argument("--reasoning-effort", default=None, help="omit to use the provider default")
     parser.add_argument("--gate", action="store_true", help="run only the competency gate")
     parser.add_argument("--force", action="store_true", help="run main arms without a passed gate")
+    parser.add_argument("--endpoint", default=agent.DEFAULT_ENDPOINT,
+                        help="any OpenAI-compatible API base URL (default: Groq)")
     args = parser.parse_args()
+    agent.set_endpoint(args.endpoint)
 
     if not verify_protocol.check():
         sys.exit("Refusing to run: protocol/ does not match Acyclic's files.")

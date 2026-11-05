@@ -9,6 +9,8 @@ from pathlib import Path
 CACHE_DIR = Path(__file__).parent / "cache"
 MAX_RETRIES = 6
 MAX_WAIT_S = 120  # a longer retry-after usually means a daily cap: stop instead of sleeping
+DEFAULT_ENDPOINT = "https://api.groq.com/openai/v1"
+ENDPOINT = DEFAULT_ENDPOINT  # one endpoint per process, set by --endpoint via set_endpoint()
 
 # The artifact Acyclic's task asks for: {"version":1,"value":<integer>}.
 # Whitespace between tokens is allowed; version must be 1 and value an integer.
@@ -37,24 +39,34 @@ def parse_value(text):
     return parse_artifact(text)[0]
 
 
+def set_endpoint(url):
+    """Point every call in this process at an OpenAI-compatible API (the --endpoint flag)."""
+    global ENDPOINT, _client
+    ENDPOINT, _client = url.rstrip("/"), None
+
+
 def cache_key(model, temperature, reasoning_effort, prompt, call_id):
-    """call_id = [task, replicate, arm, hop]: identical prompts in different calls never share (D12)."""
-    payload = json.dumps([model, temperature, reasoning_effort, prompt, call_id])
+    """call_id = [task, replicate, arm, hop]: identical prompts in different calls never share (D12).
+    A non-default endpoint is part of the key; the default (Groq) keeps the original keys (D22)."""
+    fields = [model, temperature, reasoning_effort, prompt, call_id]
+    payload = json.dumps(fields if ENDPOINT == DEFAULT_ENDPOINT else fields + [ENDPOINT])
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def client():
     global _client
     if _client is None:
+        import httpx
         import truststore
         from dotenv import load_dotenv
-        from groq import Groq
         # Verify TLS against the OS certificate store (needed behind HTTPS-scanning antivirus).
         # Certificate verification stays on.
         truststore.inject_into_ssl()
         load_dotenv()
-        # max_retries=0: the SDK must not retry silently; every retry happens below and is counted.
-        _client = Groq(api_key=os.environ["GROQ_API_KEY"], max_retries=0)
+        # Groq uses GROQ_API_KEY; any other endpoint uses LLM_API_KEY (none: no auth header, e.g. local).
+        key = os.environ.get("GROQ_API_KEY" if ENDPOINT == DEFAULT_ENDPOINT else "LLM_API_KEY")
+        headers = {"Authorization": f"Bearer {key}"} if key else {}
+        _client = httpx.Client(base_url=ENDPOINT, headers=headers, timeout=120)
     return _client
 
 
@@ -72,43 +84,43 @@ class RateLimitStop(Exception):
 
 def call_model(model, temperature, reasoning_effort, prompt):
     """Fresh context every call: one user message, no system prompt, no history.
+    One POST to {ENDPOINT}/chat/completions, the OpenAI-compatible chat API.
 
     reasoning_effort=None means the parameter is not sent (provider default).
-    Retries only when no model response arrived: 429 rate limit, connection error, timeout, 5xx.
+    Retries only when no model response arrived: 429 rate limit, 5xx, connection error, timeout (D3).
     """
-    import groq
+    import httpx
 
-    extra = {} if reasoning_effort is None else {"reasoning_effort": reasoning_effort}
+    body = {"model": model, "temperature": temperature, "messages": [{"role": "user", "content": prompt}]}
+    if reasoning_effort is not None:
+        body["reasoning_effort"] = reasoning_effort
     for attempt in range(MAX_RETRIES + 1):
         start = time.perf_counter()
         try:
-            resp = client().chat.completions.create(
-                model=model,
-                temperature=temperature,
-                messages=[{"role": "user", "content": prompt}],
-                **extra,
-            )
-        # No model response arrived: 429, connection error/timeout, or 5xx server error (D3).
-        except (groq.RateLimitError, groq.APIConnectionError, groq.InternalServerError) as e:
-            wait = 2 ** attempt
-            if isinstance(e, groq.RateLimitError):
-                wait = float(e.response.headers.get("retry-after", wait))
-            if attempt == MAX_RETRIES or wait > MAX_WAIT_S:
-                raise RateLimitStop(f"{type(e).__name__} after {attempt} retries "
-                                    f"(next wait would be {wait:.0f}s): {e}")
-            time.sleep(wait)
-            continue
-        except Exception as e:
-            raise CallFailed(f"{type(e).__name__}: {e}", attempt)
-        message = resp.choices[0].message
-        return {
-            "raw_text": message.content,
-            "reasoning": message.reasoning,  # logged only; never passed to the next hop
-            "prompt_tokens": resp.usage.prompt_tokens,
-            "completion_tokens": resp.usage.completion_tokens,
-            "latency_ms": round((time.perf_counter() - start) * 1000),
-            "retries": attempt,
-        }
+            resp = client().post("/chat/completions", json=body)
+        except httpx.TransportError as e:  # connection errors and timeouts: no response arrived
+            resp, error = None, f"{type(e).__name__}: {e}"
+        else:
+            error = f"HTTP {resp.status_code}: {resp.text[:300]}"
+            if resp.status_code == 200:
+                data = resp.json()
+                message, usage = data["choices"][0]["message"], data.get("usage") or {}
+                return {
+                    "raw_text": message.get("content"),
+                    "reasoning": message.get("reasoning"),  # logged only; never passed to the next hop
+                    "prompt_tokens": usage.get("prompt_tokens", 0),
+                    "completion_tokens": usage.get("completion_tokens", 0),
+                    "latency_ms": round((time.perf_counter() - start) * 1000),
+                    "retries": attempt,
+                }
+            if resp.status_code != 429 and resp.status_code < 500:
+                raise CallFailed(error, attempt)  # e.g. 400 bad request, 401 bad key, 404 no model
+        wait = 2 ** attempt
+        if resp is not None and resp.status_code == 429:
+            wait = float(resp.headers.get("retry-after", wait))
+        if attempt == MAX_RETRIES or wait > MAX_WAIT_S:
+            raise RateLimitStop(f"{error} after {attempt} retries (next wait would be {wait:.0f}s)")
+        time.sleep(wait)
 
 
 def call_agent(model, temperature, prompt, reasoning_effort=None, call_id=None, use_cache=True):
@@ -129,9 +141,9 @@ def call_agent(model, temperature, prompt, reasoning_effort=None, call_id=None, 
             return {"value": None, "format_exact": False, "raw_text": None, "reasoning": None,
                     "prompt_tokens": 0, "completion_tokens": 0, "latency_ms": None,
                     "retries": e.retries, "reasoning_effort": reasoning_effort,
-                    "cached": False, "error": str(e)}
-        record.update(model=model, temperature=temperature,
-                      reasoning_effort=reasoning_effort, prompt=prompt, call_id=call_id)
+                    "endpoint": ENDPOINT, "cached": False, "error": str(e)}
+        record.update(model=model, temperature=temperature, reasoning_effort=reasoning_effort,
+                      prompt=prompt, call_id=call_id, endpoint=ENDPOINT)
         if use_cache:
             CACHE_DIR.mkdir(exist_ok=True)
             path.write_text(json.dumps(record, indent=1), encoding="utf-8")
@@ -148,6 +160,7 @@ def call_agent(model, temperature, prompt, reasoning_effort=None, call_id=None, 
         "latency_ms": record["latency_ms"],
         "retries": record["retries"],  # from the original call, also when served from cache
         "reasoning_effort": reasoning_effort,
+        "endpoint": ENDPOINT,
         "cached": cached,
         "error": None,
     }

@@ -394,8 +394,9 @@ D20).
 
 ## reproduce
 
-Python 3.14.3 on Windows. Package versions used: groq 1.7.0, python-dotenv 1.2.4,
-matplotlib 3.11.2, truststore 0.10.5. Put your key in `.env` first (copy `.env.example`).
+Python 3.14.3 on Windows. Package versions: httpx 0.28.1, python-dotenv 1.2.4, matplotlib 3.11.2,
+truststore 0.10.5, pytest 9.2.0. Runs before 2026-11-05 called Groq through the groq SDK 1.7.0;
+the transport is now plain HTTP (DECISIONS.md, D22). Put your key in `.env` first (copy `.env.example`).
 
 ```
 python -m venv .venv
@@ -409,6 +410,26 @@ The run takes about 31 minutes on the free tier because of rate limits. Calls sa
 temperature 0.7, so a fresh run will give different counts. `python verify_protocol.py` checks
 that `protocol/` still matches Acyclic's files. `python -m pytest` runs the tests (32, no API
 calls). `python compare_models.py` runs all four models.
+
+## qualify a model
+
+`qualify.py` turns the stored results for one model into a receipt and a one-page card. It makes
+no API calls and refuses if any probe's results are incomplete (DECISIONS.md, D23).
+
+```
+.venv\Scripts\python qualify.py --model openai/gpt-oss-120b      # receipts/<model>/<date>.json and .md
+.venv\Scripts\python qualify.py gate --model openai/gpt-oss-120b --max-consensus-hop1 0.10
+.venv\Scripts\python qualify.py verify receipts/openai_gpt-oss-120b/2026-11-05.json
+```
+
+The verdict has three levels. PASS: every check passes. PASS WITH CAVEATS: only checks on
+secondary outcomes fail (consensus hop-1 adoption, claimed-authority adoption); they are listed as
+caveats. FAIL: a check on a primary outcome fails (competency gate, consensus hop-4 adoption, join
+adoption under the wrong seed, failure rate). `gate` prints every check and exits 0 for PASS and
+PASS WITH CAVEATS (1 with `--strict`), 1 for FAIL, 2 if results are missing. The thresholds are
+this tool's judgement calls, not Acyclic's, and are printed on every card.
+Every runner takes `--endpoint URL` for any OpenAI-compatible API (default: Groq; key in
+`LLM_API_KEY` for other endpoints).
 
 ## protocol provenance
 
@@ -424,7 +445,7 @@ on 2026-11-03. Never edited. `verify_protocol.py` checks these hashes.
 | quantity.json | scorers/quantity.json | `827d60d42d07495446a5c0120c81a6783cd312edc97be0f1e64cb3148449394c` |
 
 Every place where their protocol was ambiguous, or could not apply outside their harness, is in
-[DECISIONS.md](DECISIONS.md) (D1 to D21), with the line of their text that forced the choice.
+[DECISIONS.md](DECISIONS.md) (D1 to D23), with the line of their text that forced the choice.
 
 ## costs
 

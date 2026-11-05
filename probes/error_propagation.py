@@ -17,7 +17,7 @@ from collections import Counter, defaultdict
 import run
 from agent import call_agent
 from analyze import CAVEAT, load_rows, pct, print_paired, write_quotes
-from probes.common import add_common_args, execute, probe_dir as common_probe_dir
+from probes.common import add_common_args, execute, parse, probe_dir as common_probe_dir
 from prompts import artifact_text, build_prompt, seed_text, task_text
 
 PROBE = "error-propagation"
@@ -169,7 +169,7 @@ def analyze(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     add_common_args(parser)
-    args = parser.parse_args()
+    args = parse(parser)
     if args.command == "analyze":
         return analyze(args)
     execute(args, PROBE, run_probe)

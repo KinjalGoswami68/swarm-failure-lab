@@ -4,6 +4,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import agent
 import run
 import verify_protocol
 from agent import RateLimitStop
@@ -52,3 +53,12 @@ def add_common_args(parser):
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--reasoning-effort", default=None, help="omit to use the provider default")
     parser.add_argument("--force", action="store_true", help="run without a passed gate")
+    parser.add_argument("--endpoint", default=agent.DEFAULT_ENDPOINT,
+                        help="any OpenAI-compatible API base URL (default: Groq)")
+
+
+def parse(parser):
+    """Parse the common flags and point this process at the chosen endpoint."""
+    args = parser.parse_args()
+    agent.set_endpoint(args.endpoint)
+    return args

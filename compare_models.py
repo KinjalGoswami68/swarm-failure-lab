@@ -12,6 +12,9 @@ import subprocess
 import sys
 from collections import Counter
 
+import agent
+import run as runner
+
 from analyze import (ARMS, CAVEAT, GATE_THRESHOLD, RESULTS, gate_status, load_rows,
                      paired_contrast, pct, plot)
 
@@ -25,7 +28,8 @@ MODELS = {
 
 
 def run(model, temperature, *flags):
-    cmd = [sys.executable, "-u", "run.py", "--model", model, "--temperature", str(temperature), *flags]
+    cmd = [sys.executable, "-u", "run.py", "--model", model, "--temperature", str(temperature),
+           "--endpoint", agent.ENDPOINT, *flags]
     print(f"\n$ {' '.join(cmd[1:])}", flush=True)
     code = subprocess.call(cmd)
     if code == 2:
@@ -37,7 +41,7 @@ def run(model, temperature, *flags):
 def run_model(model, mode, temperature):
     run(model, temperature, "--gate")  # cached after the first time
     if mode == "full":
-        rows = [r for r in load_rows([RESULTS / model.replace("/", "_")])
+        rows = [r for r in load_rows([runner.model_dir(model)])
                 if r["temperature"] == temperature and r["reasoning_effort"] is None]
         passed = gate_status(rows)[2]
         # D13: a model below the gate still runs if budget allows, but is reported separately.
@@ -52,7 +56,7 @@ def summary(models, temperature):
                                  ("Failed competency gate or not run: descriptive only", False)]:
         table = []
         for model in models:
-            rows = [r for r in load_rows([RESULTS / model.replace("/", "_")])
+            rows = [r for r in load_rows([runner.model_dir(model)])
                     if r["temperature"] == temperature and r["reasoning_effort"] is None]
             correct, total, passed = gate_status(rows)
             if passed != want_passed or not rows:
@@ -90,7 +94,10 @@ def main():
     parser.add_argument("--models", nargs="+", default=list(MODELS), choices=list(MODELS))
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--summary-only", action="store_true")
+    parser.add_argument("--endpoint", default=agent.DEFAULT_ENDPOINT,
+                        help="any OpenAI-compatible API base URL (default: Groq)")
     args = parser.parse_args()
+    agent.set_endpoint(args.endpoint)
 
     if not args.summary_only:
         for model in args.models:

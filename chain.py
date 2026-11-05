@@ -6,6 +6,7 @@ Usage (demo, one chain per arm): python chain.py [--task 0] [--model openai/gpt-
 import argparse
 import json
 
+import agent
 from agent import call_agent
 from prompts import artifact_text, build_prompt, seed_text, task_text
 
@@ -67,7 +68,10 @@ def main():
     parser.add_argument("--model", default="openai/gpt-oss-120b")
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--reasoning-effort", default=None, help="omit to use the provider default")
+    parser.add_argument("--endpoint", default=agent.DEFAULT_ENDPOINT,
+                        help="any OpenAI-compatible API base URL (default: Groq)")
     args = parser.parse_args()
+    agent.set_endpoint(args.endpoint)
 
     task = json.load(open("tasks.json"))[args.task]
     print(f"model={args.model}  task={task['id']} entries={task['entries']}  "

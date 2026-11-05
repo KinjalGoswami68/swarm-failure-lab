@@ -6,6 +6,7 @@ Usage: python smoke_test.py [--model openai/gpt-oss-120b] [--temperature 0]
 import argparse
 import json
 
+import agent
 from agent import call_agent
 from chain import score
 from prompts import build_prompt, seed_text, task_text
@@ -16,7 +17,9 @@ parser.add_argument("--temperature", type=float, default=0.0)
 parser.add_argument("--reasoning-effort", default=None, help="omit to use the provider default")
 parser.add_argument("--no-cache", action="store_true", help="fresh call; do not read or write the cache")
 parser.add_argument("--quiet", action="store_true", help="print only the one-line result")
+parser.add_argument("--endpoint", default=agent.DEFAULT_ENDPOINT, help="any OpenAI-compatible API base URL")
 args = parser.parse_args()
+agent.set_endpoint(args.endpoint)
 
 task = json.load(open("tasks.json"))[0]
 prompt = build_prompt(task_text(task), seed_text("false-consensus", task))
