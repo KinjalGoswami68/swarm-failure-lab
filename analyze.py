@@ -25,11 +25,11 @@ def load_rows(dirs):
     """All rows from every .jsonl in dirs. A re-run of the same call replaces the older row."""
     latest = {}
     for d in dirs:
-        for path in sorted(Path(d).glob("*.jsonl")):
+        for path in sorted(Path(d).glob("2*.jsonl")):  # run files are named by timestamp
             for line in path.read_text(encoding="utf-8").splitlines():
                 r = json.loads(line)
                 key = (r["model"], r["temperature"], r["reasoning_effort"], r["kind"], r["arm"],
-                       r["task_id"], r["replicate"], r["hop"])
+                       r["task_id"], r["replicate"], r["hop"], r.get("node"))  # node: error-propagation
                 latest[key] = r
     return list(latest.values())
 
@@ -97,15 +97,15 @@ def sign_test(diffs):
     return pos, neg, min(1.0, 2 * tail)
 
 
-def paired_contrast(main, hop):
-    """False-consensus minus baseline adoption at one hop, paired by (task, replicate),
+def paired_contrast(main, hop, baseline="baseline", treatment="false-consensus"):
+    """Treatment minus baseline adoption at one hop, paired by (task, replicate),
     one cluster per task. Returns a dict of the numbers; ci is None when not estimable."""
     at_hop = {(r["task_id"], r["replicate"], r["arm"]): r for r in main if r["hop"] == hop}
     clusters = defaultdict(list)
     unmatched = unscored = 0
     for task, replicate in sorted({(t, rep) for t, rep, _ in at_hop}):
-        base = at_hop.get((task, replicate, "baseline"))
-        treat = at_hop.get((task, replicate, "false-consensus"))
+        base = at_hop.get((task, replicate, baseline))
+        treat = at_hop.get((task, replicate, treatment))
         if base is None or treat is None:
             unmatched += 1
         elif "unscored" in (base["bucket"], treat["bucket"]):
@@ -124,11 +124,12 @@ def paired_contrast(main, hop):
     return result
 
 
-def print_paired(main, hop):
-    """Hop 4 is the primary outcome; hops 1-3 are secondary (recipe: 'adoption by hop')."""
-    c = paired_contrast(main, hop)
-    label = "PRIMARY outcome" if hop == HOPS[-1] else "secondary outcome"
-    print(f"\n#### Paired contrast at hop {hop} ({label}): false-consensus minus baseline, "
+def print_paired(main, hop, baseline="baseline", treatment="false-consensus", primary_hop=HOPS[-1],
+                 label=None):
+    """For sycophancy, hop 4 is the primary outcome and hops 1-3 are secondary."""
+    c = paired_contrast(main, hop, baseline, treatment)
+    label = label or ("PRIMARY outcome" if hop == primary_hop else "secondary outcome")
+    print(f"\n#### Paired contrast at hop {hop} ({label}): {treatment} minus {baseline}, "
           f"adoption of the injected value\n")
     print(f"Pairs used: {c['pairs']} in {c['clusters']} task clusters. "
           f"Excluded: {c['unscored']} pairs with an unscored hop {hop}, {c['unmatched']} unmatched.")
@@ -143,7 +144,7 @@ def print_paired(main, hop):
             print("Note: every cluster has the same difference, so the interval has zero width. "
                   "That reflects no observed spread, not certainty.")
     pos, neg, p = sign_test(c["diffs"])
-    print(f"Sign test: {pos} pairs adopted only under false-consensus, {neg} only under baseline, "
+    print(f"Sign test: {pos} pairs adopted only under {treatment}, {neg} only under {baseline}, "
           f"{len(c['diffs']) - pos - neg} ties; two-sided p = {p:.3f}{f' ({p:.1e})' if p < 0.001 else ''} "
           f"(treats pairs as independent).")
 
@@ -169,7 +170,7 @@ def print_controls(rows):
               f"{pct(h4['correct'], n)} | {pct(h4['adoption'], n)} | {pct(h4['unscored'], n)} |")
 
 
-def write_quotes(model, rows):
+def write_quotes(model, rows, path=None):
     """Every call that output the injected value, with what it saw and why it said so."""
     adoptions = sorted((r for r in rows if r["bucket"] == "adoption"),
                        key=lambda r: (r["kind"] != "main", r["temperature"], r["task_id"],
@@ -181,12 +182,13 @@ def write_quotes(model, rows):
     for i, r in enumerate(adoptions, 1):
         source, text = ("Reasoning (hidden field, logged only)", r["reasoning"]) if r["reasoning"] \
             else ("Response", r["raw_text"])
-        lines += [f"## {i}. task {r['task_id']}, {r['arm']}, hop {r['hop']}",
+        node = f", node {r['node']}" if r.get("node") else ""
+        lines += [f"## {i}. task {r['task_id']}, {r['arm']}, hop {r['hop']}{node}",
                   f"{r['kind']}, replicate {r['replicate']}, temperature {r['temperature']}, "
                   f"expected {r['expected']}, injected {r['injected']}, answer {r['value']}", "",
                   "Predecessor input:", "```", (r["predecessor_text"] or "(none)").strip(), "```", "",
                   f"{source}:", ""] + [f"> {line}" for line in text.strip().splitlines()] + [""]
-    path = RESULTS / model.replace("/", "_") / "adoption_quotes.md"
+    path = path or RESULTS / model.replace("/", "_") / "adoption_quotes.md"
     path.write_text("\n".join(lines), encoding="utf-8")
     print(f"Adoption quotes ({len(adoptions)}) written to {path}")
 

@@ -52,8 +52,16 @@ def artifact_text(value):
     return f'{{"version":1,"value":{value}}}'
 
 
-def build_prompt(task_text, predecessor_text):
-    """Task text, then the predecessor's input. Nothing else. No predecessor -> task only."""
+def build_prompt(task_text, predecessor_text, source=None):
+    """Task text, then the predecessor's input. Nothing else. No predecessor -> task only.
+
+    source (claimed-authority probe only) names the sender inside the header line, so the
+    source display sits in the same position in every arm. source=None gives the original prompt.
+    A list of predecessor texts (error-propagation join only) gives one header per input, in order.
+    """
     if predecessor_text is None:
         return task_text
-    return task_text + "\nPredecessor input:\n" + predecessor_text
+    if isinstance(predecessor_text, list):
+        return task_text + "".join("\nPredecessor input:\n" + p for p in predecessor_text)
+    header = "Predecessor input:" if source is None else f"Predecessor input (from: {source}):"
+    return task_text + "\n" + header + "\n" + predecessor_text
