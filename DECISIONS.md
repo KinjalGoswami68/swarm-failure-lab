@@ -340,3 +340,68 @@ two calls on 2026-11-05 (qwen3.8-27b and gpt-oss-120b, both correct).
   2 if results are missing or protocol files are altered.
 - **Tool commit.** Each receipt records this repo's commit and whether the working tree had
   uncommitted changes, ignoring `receipts/` itself (outputs, not tool code).
+
+## D24. scaling.md is blocked outside the harness; topology is a proxy, not it
+
+Acyclic's `recipes/scaling.md` compares a chain with a fan-out of four participants. Its own rule
+blocks the comparison here:
+
+> Keep actual model, grant reach and aggregate token/budget reservation fixed. Do not substitute
+> per-participant reservations that multiply the total budget as count grows.
+> Missing aggregate admission blocks the comparison.
+
+A chat API has no aggregate budget for a graph, and a per-call `max_tokens` is the per-participant
+substitute the recipe forbids. **Choice:** scaling.md is recorded as not reproducible. A separate
+probe, **topology** (`probes/topology.py`), is inspired by it and is not Acyclic's comparison. No
+budget is reserved and no `max_tokens` is set; tokens are measured after the run. Results go to
+`results/<model>/topology/`.
+
+Design choices, each with the line it answers:
+- "Start with `../tasks/quantity.md` only as a smoke check. Prepare independent tasks/cuts before
+  an inferential pilot." The 20 tasks (D1) are independent instances but one task family, so this
+  remains close to a smoke check.
+- "| chain | Three predecessor assessors followed by one final assessor |" The recipe has no seed:
+  A1 gets the task only (byte-identical to the gate prompt, but a separate call); A2, A3 and the
+  final assessor each get the previous artifact (D4). Implemented with `chain.run_chain(..., hops=4)`.
+- "| fan-out | Three independent assessors followed by one final join |" A, B and C get the task
+  only; the join gets their three artifacts, each under its own `Predecessor input:` header, in
+  fixed order A, B, C. Implemented with `run_diamond(..., branches=("a","b","c"))`.
+- "Give every participant the same evidence." Every participant gets the same task text; what
+  differs is only what the topology passes between them.
+- "The count includes the final assessor; coordinator/source work is reported separately." Four
+  calls per trial, all participants; coordinator/source calls: 0, reported as such.
+- "Verify actual members/edges against the admitted graph and requested count. A graph mismatch
+  is an invalid trial, not a low score." No graph is admitted. Instead a self-check per trial:
+  exactly the requested members, and each node received exactly the input its edges allow. A
+  failed check marks the trial invalid; it is counted and excluded from the contrasts.
+- "Original committed spans supply latency; no periodic resource sampling or readiness checks are
+  added." Critical path per trial from each call's own `latency_ms` (successful attempt only;
+  retry waits excluded): chain = sum of its 4 calls; fan-out = slowest of A, B, C plus the join.
+  The calls actually ran one after another, so the fan-out value is computed as if the branches
+  ran in parallel. Wall-clock time also moves with Groq's load during a run; pairing within
+  (task, replicate), run back to back with counterbalanced order, reduces but does not remove that.
+- "Primary outcomes: objective correctness and actual USD per assigned trial." Correctness of the
+  final node is primary. USD is $0 on the free tier and measures nothing; total tokens are
+  reported beside it as a proxy, not as USD. "priced-call coverage" does not apply.
+- "Pair graph/size contrasts within independent problems, then cluster over problems." Fan-out
+  minus chain, paired by (task, replicate), one cluster per task, CR1 with t intervals (D16):
+  correctness as a 0/1 difference (`paired_contrast(..., outcome="correct")`), tokens and
+  critical path as continuous differences (`analyze.paired_difference`, same estimator).
+- "Paired cost differences include fully priced trials with unscored outputs" The token
+  contrast includes trials whose final answer was unscored (graph-valid trials only).
+- "sizes 1, 2, 4 and 8 describe a possible declared matrix" Only size 4 is run. The code takes a
+  `size` argument so the controls below can be tested.
+- Negative controls. "sizes 1 and 2 have equivalent graph structure": a test checks that chain and
+  fan-out send byte-identical prompts at sizes 1 and 2 (no calls). "a missing join producer
+  terminates with its original cause": the D20 rule, tested with a stubbed lost branch. "changing
+  the requested count must change observed membership without changing the admitted aggregate
+  budget": the membership half is tested (size 2 calls 2 nodes, size 4 calls 4); the budget half
+  cannot exist here.
+- "A few modest sizes do not establish an asymptotic law" One size; no curve is drawn.
+- Addition (the user's, not the recipe's): **fan-out branch disagreement**, secondary and
+  descriptive, no threshold. For each graph-valid fan-out trial where all three branches gave a
+  decision: whether A, B and C were not all equal, and if so whether the join picked the
+  majority (and whether that was correct), the correct value against or without a majority, or
+  neither. It is the rate at which a join has to arbitrate.
+- Card: topology appears on the qualification card as information only, with no threshold check
+  (D23); a missing topology run does not block a card.

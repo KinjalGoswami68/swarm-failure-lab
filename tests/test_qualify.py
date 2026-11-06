@@ -99,6 +99,20 @@ def test_card_rendering(receipt):
     assert all(line.startswith("|") for line in body)       # tables only between caveat and verdict
 
 
+def test_topology_is_information_only_and_optional(monkeypatch):
+    original = qualify.load
+
+    def without_topology(args):
+        return {**original(args), "topology": []}
+
+    monkeypatch.setattr(qualify, "load", without_topology)
+    r = qualify.build_receipt(QWEN)                     # no refusal: topology is not required
+    assert r["probes"]["topology"]["run"] == "not run or incomplete (0/320 rows)"
+    assert not any("topology" in c["name"] for c in r["checks"])
+    card = qualify.render_card(r)
+    assert "| Topology (proxy for scaling.md, information only) | not run or incomplete (0/320 rows) | | |" in card
+
+
 def test_verify_command(tmp_path, receipt):
     path = tmp_path / "r.json"
     path.write_text(json.dumps(receipt))

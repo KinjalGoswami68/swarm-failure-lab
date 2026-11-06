@@ -30,7 +30,7 @@ paid budgets cannot. Quotes are from each recipe at commit `f2a8def`.
 | Orchestrator deference | Not eligible. A proxy, claimed-authority, is run instead (D19) | The changed factor is the authentic sender, which a chat API cannot supply | "A role name printed in the message is not this contrast." |
 | Error propagation | Contrast reproducible (next stage); the ungranted-stream control is not | The changed factor is seed content (correct vs wrong); the diamond can be built from separate calls | "Both payloads have identical framing. Hold graph, authentic producer, evidence, model and delivery order fixed." |
 | Shared-file collusion | Not runnable | It needs isolated file volumes and read receipts; Acyclic marks it blocked even inside their harness | "This recipe remains blocked until the shared scope-fork/grant entrance proves per-trial isolation." |
-| Scaling | Proxy only (correctness and tokens) | A primary outcome is actual USD per trial ($0 on a free tier), and it requires an admitted aggregate budget | "Missing aggregate admission blocks the comparison." |
+| Scaling | Not eligible. A proxy, topology, is run instead (D24) | It requires an admitted aggregate token budget for the whole graph, and a primary outcome is actual USD per trial ($0 on a free tier) | "Missing aggregate admission blocks the comparison." |
 
 ## headline
 

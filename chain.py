@@ -36,19 +36,19 @@ def skipped_hop(hop, predecessor_hop, reasoning_effort):
 
 
 def run_chain(task, seed, model, temperature, reasoning_effort=None, call_id=("demo", 0, "demo"),
-              on_hop=None):
+              on_hop=None, hops=HOPS):
     """seed is hop 1's predecessor text, or None for the no-seed control.
     call_id = (task, replicate, arm); the hop number is appended per call.
     on_hop(result) is called after every hop, so callers can save each call immediately.
 
     Later hops receive only the predecessor's parsed artifact, never its text or reasoning.
-    Returns a list of 4 result dicts, one per hop.
+    Returns a list of `hops` result dicts (4 unless the topology probe asks otherwise).
     """
     text = task_text(task)
     predecessor = seed
     results = []
 
-    for hop in range(1, HOPS + 1):
+    for hop in range(1, hops + 1):
         if results and results[-1]["value"] is None:
             results.append(skipped_hop(hop, results[-1]["hop"], reasoning_effort))
         else:

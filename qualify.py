@@ -27,6 +27,7 @@ import agent
 import run
 import verify_protocol
 from analyze import CAVEAT, load_rows, paired_contrast, sign_test
+from probes import topology
 
 ROOT = Path(__file__).parent
 RECEIPTS = ROOT / "receipts"
@@ -59,7 +60,7 @@ ELIGIBILITY = {
     "shared-file": {"run_here": "no", "status": "not runnable",
                     "line": "This recipe remains blocked until the shared scope-fork/grant entrance "
                             "proves per-trial isolation."},
-    "scaling": {"run_here": "no", "status": "proxy only (correctness and tokens); not run",
+    "scaling": {"run_here": "proxy", "status": "not reproducible; topology proxy run instead (D24)",
                 "line": "Missing aggregate admission blocks the comparison."},
 }
 
@@ -80,13 +81,20 @@ def wilson(k, n, z=1.959964):
     return [round(max(0.0, centre - half), 6), round(min(1.0, centre + half), 6)]
 
 
-def rate(rows, bucket="adoption"):
-    k, n = sum(r["bucket"] == bucket for r in rows), len(rows)
+def count_rate(k, n):
     return {"k": k, "n": n, "rate": round(k / n, 6) if n else None, "ci95": wilson(k, n)}
 
 
+def rate(rows, bucket="adoption"):
+    return count_rate(sum(r["bucket"] == bucket for r in rows), len(rows))
+
+
 def contrast(rows, hop, baseline, treatment):
-    c = paired_contrast(rows, hop, baseline, treatment)
+    return contrast_numbers(paired_contrast(rows, hop, baseline, treatment), baseline, treatment)
+
+
+def contrast_numbers(c, baseline, treatment):
+    """A paired_contrast / paired_difference result in receipt form."""
     r6 = lambda x: None if x is None else round(x, 6)
     return {"baseline": baseline, "treatment": treatment, "mean": r6(c["mean"]), "se": r6(c["se"]),
             "ci95": [r6(x) for x in c["ci"]] if c["ci"] else None, "pairs": c["pairs"],
@@ -111,7 +119,8 @@ def load(args):
     base = run.model_dir(args.model)
     return {"sycophancy": match(load_rows([base])),
             "claimed-authority": match(load_rows([base / "claimed-authority"])),
-            "error-propagation": match(load_rows([base / "error-propagation"]))}
+            "error-propagation": match(load_rows([base / "error-propagation"])),
+            "topology": match(load_rows([base / "topology"]))}
 
 
 def require_complete(rows, args):
@@ -135,6 +144,29 @@ def require_complete(rows, args):
                if len(got) < want]
     if missing:
         raise Missing("Results incomplete for " + args.model + ":\n  " + "\n  ".join(missing))
+
+
+def topology_section(rows):
+    """Information only (D24): no threshold. Missing or incomplete runs are reported, not required."""
+    want = len(TASKS) * REPLICATES * 2 * topology.SIZE
+    base = {"recipe": "none: proxy inspired by recipes/scaling.md (D24)",
+            "status": ELIGIBILITY["scaling"]["status"], "information_only": True}
+    if len(rows) < want:
+        return {**base, "run": f"not run or incomplete ({len(rows)}/{want} rows)"}
+    s = topology.summary(rows)
+    arms = {arm: {"correct": count_rate(a["correct"], a["assigned"]),
+                  "tokens_mean": a["tokens_mean"], "tokens_total": a["tokens_total"],
+                  "critical_path_ms_mean": a["critical_path_ms_mean"],
+                  "critical_path_ms_median": a["critical_path_ms_median"], "invalid_trials": a["invalid"]}
+            for arm, a in s["arms"].items()}
+    d = s["disagreement"]
+    return {**base, "run": "complete", "size": topology.SIZE, "arms": arms,
+            "contrasts": {name: contrast_numbers(c, "chain", "fan-out") for name, c in s["contrasts"].items()},
+            "fan_out_disagreement": {**count_rate(len(d["list"]), d["trials"]),
+                                     "join_picked": dict(Counter(x["picked"] for x in d["list"]))},
+            "differing_final_answers": len(s["differing_final_answers"]),
+            "coordinator_calls": s["coordinator_calls"],
+            "tokens": sum(a["tokens_total"] for a in s["arms"].values())}
 
 
 # ---------- receipt ----------
@@ -257,9 +289,10 @@ def build_receipt(args, thresholds=THRESHOLDS):
                 "contrast_exploratory": contrast(joins, 2, "correct-seed", "consensus-seed"),
                 "tokens": tokens(ep),
             },
+            "topology": topology_section(rows["topology"]),
         },
         "main_arm_failure": rate(all_main, "unscored"),
-        "tokens_total": tokens(syco) + tokens(ca) + tokens(ep),
+        "tokens_total": tokens(syco) + tokens(ca) + tokens(ep) + tokens(rows["topology"]),
         "usd_total": 0,
         "thresholds": thresholds,
     }
@@ -284,8 +317,27 @@ def ci(interval, pct=True):
     return f"[{fmt(interval[0])}, {fmt(interval[1])}]"
 
 
-def diff(c):
-    return "n/a" if c["mean"] is None else f"{c['mean']:+.3f} {ci(c['ci95'], pct=False)}"
+def diff(c, unit=""):
+    if c["mean"] is None:
+        return "n/a"
+    if not unit:
+        return f"{c['mean']:+.3f} {ci(c['ci95'], pct=False)}"
+    interval = "n/a" if c["ci95"] is None else f"[{c['ci95'][0]:+,.0f}, {c['ci95'][1]:+,.0f}]"
+    return f"{c['mean']:+,.0f}{unit} {interval}"
+
+
+def topology_rows(t):
+    if t["run"] != "complete":
+        return [f"| Topology (proxy for scaling.md, information only) | {t['run']} | | |"]
+    ch, fo, c = t["arms"]["chain"], t["arms"]["fan-out"], t["contrasts"]
+    d = t["fan_out_disagreement"]
+    return [
+        f"| Correct final answer | {frac(ch['correct'])} | {frac(fo['correct'])} | {diff(c['correct'])} |",
+        f"| Tokens per trial (mean) | {ch['tokens_mean']:,} | {fo['tokens_mean']:,} | {diff(c['tokens'], ' tokens')} |",
+        f"| Critical path per trial (mean, computed) | {ch['critical_path_ms_mean']:,} ms | "
+        f"{fo['critical_path_ms_mean']:,} ms | {diff(c['critical_path_ms'], ' ms')} |",
+        f"| Fan-out branches not all equal | | {frac(d)} {ci(d['ci95'])} | |",
+    ]
 
 
 def render_card(receipt):
@@ -320,6 +372,10 @@ def render_card(receipt):
         f"{diff(ep['contrast_exploratory'])} |",
         f"| Error propagation (exploratory arm) | branch adoption, consensus seed | | "
         f"{frac(ep['branch_adoption']['consensus-seed'])} {ci(ep['branch_adoption']['consensus-seed']['ci95'])} | |",
+        "",
+        "| Topology (proxy for scaling.md, information only, 4 participants) | Chain | Fan-out | "
+        "Paired difference [95% CI] |", "| --- | --- | --- | --- |",
+    ] + topology_rows(p["topology"]) + [
         "",
         "| Acyclic recipe | Run here | Outside the harness |", "| --- | --- | --- |",
     ] + [f"| {name} | {e['run_here']} | {e['status']} |" for name, e in receipt["eligibility"].items()] + [

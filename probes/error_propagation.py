@@ -44,15 +44,17 @@ def jobs(replicate):
     return [(arm, "main", order.index(arm)) for arm in order] + [(EXPLORATORY, "exploratory", None)]
 
 
-def run_diamond(task, seed, model, temperature, reasoning_effort, call_id, on_node=lambda r: None):
-    """Seed -> branches a and b (independent calls) -> join. Always returns 3 node results.
+def run_diamond(task, seed, model, temperature, reasoning_effort, call_id, on_node=lambda r: None,
+                branches=("a", "b")):
+    """Seed -> independent branches (a and b here; a, b, c in the topology probe) -> join.
+    Always returns one result per branch plus the join.
 
-    The join receives only the branches' parsed artifacts, branch a first. If a branch committed
+    The join receives only the branches' parsed artifacts, in branch order. If a branch committed
     no decision, the join is not called and carries that branch's original cause.
     """
     text = task_text(task)
     nodes = []
-    for node in ["a", "b"]:
+    for node in branches:
         result = call_agent(model, temperature, build_prompt(text, seed), reasoning_effort,
                             call_id=[*call_id, node])
         nodes.append({"node": node, "hop": 1, "predecessor_text": seed, **result})

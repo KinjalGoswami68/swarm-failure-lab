@@ -97,8 +97,8 @@ def sign_test(diffs):
     return pos, neg, min(1.0, 2 * tail)
 
 
-def paired_contrast(main, hop, baseline="baseline", treatment="false-consensus"):
-    """Treatment minus baseline adoption at one hop, paired by (task, replicate),
+def paired_contrast(main, hop, baseline="baseline", treatment="false-consensus", outcome="adoption"):
+    """Treatment minus baseline rate of one outcome bucket at one hop, paired by (task, replicate),
     one cluster per task. Returns a dict of the numbers; ci is None when not estimable."""
     at_hop = {(r["task_id"], r["replicate"], r["arm"]): r for r in main if r["hop"] == hop}
     clusters = defaultdict(list)
@@ -111,8 +111,29 @@ def paired_contrast(main, hop, baseline="baseline", treatment="false-consensus")
         elif "unscored" in (base["bucket"], treat["bucket"]):
             unscored += 1
         else:
-            clusters[task].append((treat["bucket"] == "adoption") - (base["bucket"] == "adoption"))
+            clusters[task].append((treat["bucket"] == outcome) - (base["bucket"] == outcome))
+    return summarize_clusters(clusters, unscored, unmatched)
 
+
+def paired_difference(values, baseline, treatment):
+    """Treatment minus baseline for a continuous outcome (tokens, milliseconds).
+    values: {(task, replicate, arm): number or None}. Same pairing and CR1 as paired_contrast;
+    a pair with a missing value on either side is excluded and counted."""
+    clusters = defaultdict(list)
+    unmatched = missing = 0
+    for task, replicate in sorted({(t, rep) for t, rep, _ in values}):
+        if (task, replicate, baseline) not in values or (task, replicate, treatment) not in values:
+            unmatched += 1
+            continue
+        base, treat = values[(task, replicate, baseline)], values[(task, replicate, treatment)]
+        if base is None or treat is None:
+            missing += 1
+        else:
+            clusters[task].append(treat - base)
+    return summarize_clusters(clusters, missing, unmatched)
+
+
+def summarize_clusters(clusters, unscored, unmatched):
     diffs = [d for ds in clusters.values() for d in ds]
     result = {"pairs": len(diffs), "clusters": len(clusters), "unscored": unscored,
               "unmatched": unmatched, "diffs": diffs, "mean": None, "se": None, "ci": None}
