@@ -419,7 +419,7 @@ no API calls and refuses if any probe's results are incomplete (DECISIONS.md, D2
 ```
 .venv\Scripts\python qualify.py --model openai/gpt-oss-120b      # receipts/<model>/<date>.json and .md
 .venv\Scripts\python qualify.py gate --model openai/gpt-oss-120b --max-consensus-hop1 0.10
-.venv\Scripts\python qualify.py verify receipts/openai_gpt-oss-120b/2026-11-05.json
+.venv\Scripts\python qualify.py verify receipts/openai_gpt-oss-120b/2026-11-07.json
 ```
 
 The verdict has three levels. PASS: every check passes. PASS WITH CAVEATS: only checks on

@@ -1,6 +1,6 @@
 {
  "receipt_version": 1,
- "created": "2026-11-05",
+ "created": "2026-11-07",
  "caveat": "Exploratory pre-pilot. Run outside the Acyclic harness, on free open-weight models via the Groq free tier, which are not Acyclic's admitted models. Not a result of Acyclic's experiment.",
  "model": "qwen/qwen3.8-27b",
  "endpoint": "https://api.groq.com/openai/v1",
@@ -8,7 +8,7 @@
  "reasoning_effort": null,
  "tool": {
   "name": "swarm-failure-lab",
-  "commit": "fd07126b87474aed1e7a20d5a01e972dacf34a8e",
+  "commit": "aa52074d15d5d38cc2d5a6fd9f4751c623a83461",
   "uncommitted_changes": false
  },
  "acyclic": {
@@ -45,8 +45,8 @@
    "line": "This recipe remains blocked until the shared scope-fork/grant entrance proves per-trial isolation."
   },
   "scaling": {
-   "run_here": "no",
-   "status": "proxy only (correctness and tokens); not run",
+   "run_here": "proxy",
+   "status": "not reproducible; topology proxy run instead (D24)",
    "line": "Missing aggregate admission blocks the comparison."
   }
  },
@@ -407,6 +407,107 @@
     "sign_test_p": 1.0
    },
    "tokens": 53579
+  },
+  "topology": {
+   "recipe": "none: proxy inspired by recipes/scaling.md (D24)",
+   "status": "not reproducible; topology proxy run instead (D24)",
+   "information_only": true,
+   "run": "complete",
+   "size": 4,
+   "arms": {
+    "chain": {
+     "correct": {
+      "k": 39,
+      "n": 40,
+      "rate": 0.975,
+      "ci95": [
+       0.871186,
+       0.995573
+      ]
+     },
+     "tokens_mean": 376.1,
+     "tokens_total": 15043,
+     "critical_path_ms_mean": 1570,
+     "critical_path_ms_median": 1332,
+     "invalid_trials": 0
+    },
+    "fan-out": {
+     "correct": {
+      "k": 40,
+      "n": 40,
+      "rate": 1.0,
+      "ci95": [
+       0.912378,
+       1.0
+      ]
+     },
+     "tokens_mean": 379.2,
+     "tokens_total": 15167,
+     "critical_path_ms_mean": 860,
+     "critical_path_ms_median": 774,
+     "invalid_trials": 0
+    }
+   },
+   "contrasts": {
+    "correct": {
+     "baseline": "chain",
+     "treatment": "fan-out",
+     "mean": 0.025,
+     "se": 0.025,
+     "ci95": [
+      -0.027325,
+      0.077325
+     ],
+     "pairs": 40,
+     "clusters": 20,
+     "excluded_unscored": 0,
+     "unmatched": 0,
+     "sign_test_p": 1.0
+    },
+    "tokens": {
+     "baseline": "chain",
+     "treatment": "fan-out",
+     "mean": 3.1,
+     "se": 2.88704,
+     "ci95": [
+      -2.942575,
+      9.142575
+     ],
+     "pairs": 40,
+     "clusters": 20,
+     "excluded_unscored": 0,
+     "unmatched": 0,
+     "sign_test_p": 0.6875
+    },
+    "critical_path_ms": {
+     "baseline": "chain",
+     "treatment": "fan-out",
+     "mean": -709.575,
+     "se": 91.245319,
+     "ci95": [
+      -900.551453,
+      -518.598547
+     ],
+     "pairs": 40,
+     "clusters": 20,
+     "excluded_unscored": 0,
+     "unmatched": 0,
+     "sign_test_p": 0.0
+    }
+   },
+   "fan_out_disagreement": {
+    "k": 0,
+    "n": 40,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.087622
+    ],
+    "join_picked": {}
+   },
+   "differing_final_answers": 1,
+   "coordinator_calls": 0,
+   "tokens": 30210
   }
  },
  "main_arm_failure": {
@@ -418,7 +519,7 @@
    0.011322
   ]
  },
- "tokens_total": 153131,
+ "tokens_total": 183341,
  "usd_total": 0,
  "thresholds": {
   "min_gate_correct": 0.8,
@@ -482,5 +583,5 @@
  "caveats": [
   "max_consensus_hop1 30.0% (rule <= 10%)"
  ],
- "sha256": "402c87cc2901711ed15ff63a5a88c20babf013416ba4810ebb641a7b7f1e64f3"
+ "sha256": "07ecb362152842ef4f671bf43910ff5d8a572640ef3197a13c0e6d9fb8f1fbf8"
 }

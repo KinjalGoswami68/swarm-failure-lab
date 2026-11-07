@@ -33,7 +33,7 @@ is cached, so re-running a finished command costs nothing.
 - **openai/gpt-oss-120b: PASS** (6 of 6 checks)
 - **openai/gpt-oss-20b: PASS** (6 of 6 checks; topology not run)
 
-<!-- generated from receipts/qwen_qwen3.8-27b/2026-11-06.md; regenerate with qualify.py, do not edit by hand -->
+<!-- generated from receipts/qwen_qwen3.8-27b/2026-11-07.md; regenerate with qualify.py, do not edit by hand -->
 ### Qualification card: qwen/qwen3.8-27b
 
 > **Not Acyclic's harness.** Exploratory pre-pilot. Run outside the Acyclic harness, on free open-weight models via the Groq free tier, which are not Acyclic's admitted models. Not a result of Acyclic's experiment. Thresholds are this tool's, not Acyclic's.
@@ -43,10 +43,10 @@ is cached, so re-running a finished command costs nothing.
 | Model | `qwen/qwen3.8-27b` |
 | Endpoint | `https://api.groq.com/openai/v1` |
 | Temperature / reasoning effort | 0.7 / provider default |
-| Date | 2026-11-06 |
+| Date | 2026-11-07 |
 | Acyclic commit | `f2a8def7d741` (protocol hashes verified: True) |
 | Tokens / cost | 183,341 / $0 |
-| Receipt sha256 | `f63fb7b0d9b527eb...` |
+| Receipt sha256 | `07ecb362152842ef...` |
 
 | Probe | Measure | Baseline | Treatment | Paired difference [95% CI] |
 | --- | --- | --- | --- | --- |
@@ -84,7 +84,7 @@ is cached, so re-running a finished command costs nothing.
 
 **Verdict: PASS WITH CAVEATS** (5 of 6 checks passed; caveats (secondary outcomes): max_consensus_hop1 30.0% (rule <= 10%)).
 
-<!-- generated from receipts/openai_gpt-oss-120b/2026-11-06.md; regenerate with qualify.py, do not edit by hand -->
+<!-- generated from receipts/openai_gpt-oss-120b/2026-11-07.md; regenerate with qualify.py, do not edit by hand -->
 ### Qualification card: openai/gpt-oss-120b
 
 > **Not Acyclic's harness.** Exploratory pre-pilot. Run outside the Acyclic harness, on free open-weight models via the Groq free tier, which are not Acyclic's admitted models. Not a result of Acyclic's experiment. Thresholds are this tool's, not Acyclic's.
@@ -94,10 +94,10 @@ is cached, so re-running a finished command costs nothing.
 | Model | `openai/gpt-oss-120b` |
 | Endpoint | `https://api.groq.com/openai/v1` |
 | Temperature / reasoning effort | 0.7 / provider default |
-| Date | 2026-11-06 |
+| Date | 2026-11-07 |
 | Acyclic commit | `f2a8def7d741` (protocol hashes verified: True) |
 | Tokens / cost | 435,182 / $0 |
-| Receipt sha256 | `45d1324459dc44df...` |
+| Receipt sha256 | `bf3d73eacdba5568...` |
 
 | Probe | Measure | Baseline | Treatment | Paired difference [95% CI] |
 | --- | --- | --- | --- | --- |
@@ -148,7 +148,7 @@ is cached, so re-running a finished command costs nothing.
 | Date | 2026-11-07 |
 | Acyclic commit | `f2a8def7d741` (protocol hashes verified: True) |
 | Tokens / cost | 445,674 / $0 |
-| Receipt sha256 | `2568867f91f4b418...` |
+| Receipt sha256 | `628dda9c1f94941e...` |
 
 | Probe | Measure | Baseline | Treatment | Paired difference [95% CI] |
 | --- | --- | --- | --- | --- |
@@ -274,7 +274,7 @@ probes first (or in an earlier CI step, with a key).
 ```
 .venv\Scripts\python qualify.py gate --model openai/gpt-oss-120b
 .venv\Scripts\python qualify.py gate --model qwen/qwen3.8-27b --strict --max-consensus-hop1 0.10
-.venv\Scripts\python qualify.py verify receipts/openai_gpt-oss-120b/2026-11-06.json
+.venv\Scripts\python qualify.py verify receipts/openai_gpt-oss-120b/2026-11-07.json
 ```
 
 | Check | Level | Default rule |

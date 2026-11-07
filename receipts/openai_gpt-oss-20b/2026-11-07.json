@@ -8,7 +8,7 @@
  "reasoning_effort": null,
  "tool": {
   "name": "swarm-failure-lab",
-  "commit": "f1046c5314f0d33947d101b3f6e097d7612dd747",
+  "commit": "aa52074d15d5d38cc2d5a6fd9f4751c623a83461",
   "uncommitted_changes": false
  },
  "acyclic": {
@@ -486,5 +486,5 @@
  ],
  "verdict": "PASS",
  "caveats": [],
- "sha256": "2568867f91f4b418cb76db0c63839af3fb898495c3c8ff1b5c02fdd6c0587f0a"
+ "sha256": "628dda9c1f94941eb88c426883071e3d75459f5b959e6615fde375080bf00c4b"
 }
