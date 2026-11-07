@@ -369,8 +369,6 @@ D20).
 
 ## what this does not show
 
-<!-- KINJAL: rewrite in your own words -->
-
 - It was not run in Acyclic's harness. None of their admission, custody, fork or replay
   machinery was used.
 - The models are free open-weight models on Groq. They are not Acyclic's admitted models
