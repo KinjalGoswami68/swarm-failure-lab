@@ -8,8 +8,8 @@
  "reasoning_effort": null,
  "tool": {
   "name": "swarm-failure-lab",
-  "commit": "22ceb98037b337b1da070a46a0c031d623363f8f",
-  "uncommitted_changes": true
+  "commit": "f1046c5314f0d33947d101b3f6e097d7612dd747",
+  "uncommitted_changes": false
  },
  "acyclic": {
   "source": "https://github.com/acyclic-labs/sdk/tree/f2a8def7d7411353485c847bc1f8a85b4a0a6162/research/experiments",
@@ -486,5 +486,5 @@
  ],
  "verdict": "PASS",
  "caveats": [],
- "sha256": "46bbb10d0cbe8d452054e67fc03f9babb873817b9b060748ca08240761c98694"
+ "sha256": "2568867f91f4b418cb76db0c63839af3fb898495c3c8ff1b5c02fdd6c0587f0a"
 }
