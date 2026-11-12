@@ -91,7 +91,9 @@ def call_model(model, temperature, reasoning_effort, prompt):
     """
     import httpx
 
-    body = {"model": model, "temperature": temperature, "messages": [{"role": "user", "content": prompt}]}
+    # A list prompt is a whole conversation (arms studies, D25); a string is one user message.
+    messages = prompt if isinstance(prompt, list) else [{"role": "user", "content": prompt}]
+    body = {"model": model, "temperature": temperature, "messages": messages}
     if reasoning_effort is not None:
         body["reasoning_effort"] = reasoning_effort
     for attempt in range(MAX_RETRIES + 1):

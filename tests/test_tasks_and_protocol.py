@@ -56,3 +56,11 @@ def test_cr1_matches_acyclic_example():
 def test_sign_test():
     assert sign_test([1] * 12 + [0] * 28) == (12, 0, 2 / 4096)
     assert sign_test([0, 0]) == (0, 0, 1.0)
+
+
+def test_only_crlf_vs_lf_is_accepted_against_acyclics_committed_bytes():
+    """D26: the seeds here are CRLF, Acyclic's committed blobs LF; nothing else may differ."""
+    assert verify_protocol.compare(b"a\nb\n", b"a\nb\n") == (True, "matches Acyclic's committed bytes")
+    assert verify_protocol.compare(b"a\r\nb\r\n", b"a\nb\n")[0]
+    assert not verify_protocol.compare(b"a\r\nb", b"a\nb\n")[0]
+    assert not verify_protocol.compare(b"a\nc\n", b"a\nb\n")[0]

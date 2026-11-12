@@ -6,6 +6,8 @@ Usage:
   python run.py --tasks 2 --replicates 1        main arms; refuses without a passed gate (or --force)
   python run.py --controls                      main arms + negative-control chains (full design)
   python run.py --arms none --controls          negative-control chains only
+  python run.py --arms FILE                     an Acyclic version-1 arms file (D25); writes
+                                                results/<model>/arms/<name>/report.jsonl
 Common flags: --model, --temperature (default 0.7, D14), --reasoning-effort, --endpoint
 Output: results/<model>/<timestamp>[_gate].jsonl
 If rate limits outlast the backoff, the run stops with exit code 2 (D17). Re-run the same
@@ -20,6 +22,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import agent
+import arms as arms_file
 import verify_protocol
 from agent import RateLimitStop, call_agent
 from chain import run_chain, score
@@ -138,12 +141,46 @@ def run_chains(args, tasks, arms, write):
                           call_id=(task["id"], replicate, arm), on_hop=save)
 
 
+def run_arms_file(args):
+    """--arms FILE: refuse before any call unless the file is valid and quotes protocol/ exactly."""
+    if args.replicates is not None:
+        sys.exit("Refusing: an arms file sets its own replicates (default 20); drop --replicates.")
+    try:
+        study = arms_file.parse(args.arms)
+        quoted = study["quotes"] = arms_file.check_protocol(study)
+        arms_file.check_model(study, args.model)
+    except arms_file.Refused as e:
+        sys.exit(f"Refusing to run {args.arms}: {e}")
+    if not gate_passed(args) and not args.force:
+        sys.exit(f"Refusing to run arms: {args.model} has not passed the competency gate (D13). "
+                 f"Run: python run.py --model {args.model} --temperature {args.temperature} --gate")
+
+    out = model_dir(args.model) / "arms" / study["name"] / "report.jsonl"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    print(f"{args.model} | temperature {args.temperature} | {study['name']}: "
+          f"{len(study['arms'])} arms x {study['replicates']} replicates | briefs quote "
+          + ", ".join(f"{k}={v}" for k, v in quoted.items()) + f" | writing {out}", flush=True)
+    with open(out, "w", encoding="utf-8") as f:
+        def emit(row):
+            f.write(json.dumps(row) + "\n")
+            f.flush()
+        try:
+            failures = arms_file.run_study(study, args.model, args.temperature,
+                                           args.reasoning_effort, emit)
+        except RateLimitStop as e:
+            print(f"\nSTOPPED (rate limit, D17): {e}\nThe report is incomplete (no run row). "
+                  f"Re-run the same command later; finished calls come back from the cache.")
+            sys.exit(2)
+    print(f"DONE: {len(failures)} failed trial(s). wrote {out}", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--model", default="openai/gpt-oss-120b")
     parser.add_argument("--tasks", type=int, default=20)
-    parser.add_argument("--replicates", type=int, default=2)
-    parser.add_argument("--arms", default=",".join(ARMS), help='comma list, or "none"')
+    parser.add_argument("--replicates", type=int, default=None, help="default 2")
+    parser.add_argument("--arms", default=",".join(ARMS),
+                        help='comma list, or "none", or an Acyclic arms file (path to a .json file)')
     parser.add_argument("--controls", action="store_true", help="also run the negative-control chains")
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--reasoning-effort", default=None, help="omit to use the provider default")
@@ -157,6 +194,10 @@ def main():
     if not verify_protocol.check():
         sys.exit("Refusing to run: protocol/ does not match Acyclic's files.")
 
+    if Path(args.arms).is_file():
+        run_arms_file(args)
+        return
+    args.replicates = 2 if args.replicates is None else args.replicates
     arms = [] if args.arms == "none" else args.arms.split(",")
     assert all(arm in ARMS for arm in arms), f"--arms must be from {ARMS}"
     if arms and not args.gate and not gate_passed(args) and not args.force:

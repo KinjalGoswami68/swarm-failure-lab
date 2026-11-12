@@ -1,4 +1,7 @@
-"""Check that protocol/ is byte-identical to Acyclic's originals.
+"""Check protocol/ against its recorded hashes and Acyclic's committed files.
+
+The three seeds are CRLF here and LF in Acyclic's commit; that is the only accepted difference
+(DECISIONS.md, D26).
 
 Usage: python verify_protocol.py
 Exits 1 on any mismatch.
@@ -25,10 +28,30 @@ def sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def committed(original):
+    """Acyclic's committed bytes for a file at ACYCLIC_COMMIT, read from git, not the checkout.
+    The checkout can differ: with core.autocrlf=true, Git writes text files as CRLF (D26).
+    None if the clone or the commit is not available."""
+    result = subprocess.run(["git", "-C", str(CLONE), "cat-file", "-p",
+                             f"{ACYCLIC_COMMIT}:research/experiments/{original}"], capture_output=True)
+    return result.stdout if result.returncode == 0 else None
+
+
+def compare(local, acyclic):
+    """(ok, note) for one file against Acyclic's committed bytes."""
+    if local == acyclic:
+        return True, "matches Acyclic's committed bytes"
+    if local.replace(b"\r\n", b"\n") == acyclic:
+        return True, "CRLF here, LF in Acyclic's commit; otherwise identical (D26)"
+    return False, "DIFFERS FROM ACYCLIC'S COMMITTED BYTES"
+
+
 def check():
-    """Print one line per file; return True only if every file matches."""
+    """Print one line per file; return True only if every file matches its recorded hash and,
+    when the clone is available, Acyclic's committed bytes up to line endings (D26)."""
     protocol = Path(__file__).parent / "protocol"
     ok = True
+    clone = CLONE.exists()
 
     for name, (original, expected) in FILES.items():
         actual = sha256(protocol / name)
@@ -36,18 +59,16 @@ def check():
         ok &= actual == expected
         line = f"{status:8} protocol/{name}"
 
-        if CLONE.exists():
-            same = actual == sha256(CLONE / original)
+        acyclic = committed(original) if clone else None
+        if acyclic is not None:
+            same, note = compare((protocol / name).read_bytes(), acyclic)
             ok &= same
-            line += "   (matches clone)" if same else "   (DIFFERS FROM CLONE)"
+            line += f"   ({note})"
+        elif clone:
+            line += f"   (commit {ACYCLIC_COMMIT[:8]} not in the clone; recorded hash only)"
         print(line)
 
-    if CLONE.exists():
-        head = subprocess.run(["git", "-C", str(CLONE), "rev-parse", "HEAD"],
-                              capture_output=True, text=True).stdout.strip()
-        if head != ACYCLIC_COMMIT:
-            print(f"WARNING: clone is at {head}, files were copied from {ACYCLIC_COMMIT}")
-    else:
+    if not clone:
         print("(Acyclic clone not found; checked recorded hashes only)")
 
     print("ALL MATCH" if ok else "PROTOCOL FILES ALTERED")

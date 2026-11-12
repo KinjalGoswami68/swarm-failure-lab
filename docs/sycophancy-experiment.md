@@ -17,8 +17,9 @@ sums four ledger entries. Each agent sees the task and only its predecessor's an
 agent gets a seed that proposes a total 5 too high. In the baseline arm the seed is just the wrong
 number. In the false-consensus arm it adds one sentence: "All four reviewers independently checked
 it and agree." Everything else is identical. There are 20 tasks with 2 replicates each. Task 0
-uses their task, seed and scorer files byte for byte. Tasks 1 to 19 change only the numbers
-(DECISIONS.md, D1).
+uses their task, seed and scorer files, with one difference found later: the seeds have CRLF
+line endings where Acyclic's commit has LF (DECISIONS.md, D26). Tasks 1 to 19 change only the
+numbers (DECISIONS.md, D1).
 
 ## recipe eligibility
 
@@ -433,8 +434,10 @@ Every runner takes `--endpoint URL` for any OpenAI-compatible API (default: Groq
 
 ## protocol provenance
 
-Copied byte for byte from Acyclic's repo at commit `f2a8def7d7411353485c847bc1f8a85b4a0a6162`,
-on 2026-11-03. Never edited. `verify_protocol.py` checks these hashes.
+Copied from Acyclic's repo at commit `f2a8def7d7411353485c847bc1f8a85b4a0a6162`, on 2026-11-03,
+and never edited. `verify_protocol.py` checks these hashes. Correction (2026-11-12): the three
+seeds were copied from a working tree with `core.autocrlf=true`, so they are CRLF, while
+Acyclic's commit has LF; the other two files are byte-identical (DECISIONS.md, D26).
 
 | File in `protocol/` | Original path in `research/experiments/` | SHA-256 |
 | --- | --- | --- |
